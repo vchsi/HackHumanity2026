@@ -1,1 +1,5 @@
 .env
+backend/bin
+backend/include
+backend/lib
+backend/__pycache__
