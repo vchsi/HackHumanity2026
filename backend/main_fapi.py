@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-from sb_connector import SBConnector
+from backend_logic import *
 
 # Initialize app
 app = FastAPI(
@@ -34,6 +34,14 @@ async def root():
 @app.get("/health", response_model=HealthResponse)
 async def health():
     return {"status": "ok"}
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    # Save the uploaded file    filename = file.filename
+    with open(file.filename, "wb") as f:
+        f.write(await file.read())
+    
+    return {"message": f"File '{file.filename}' uploaded successfully."}
 
 
 # Server
