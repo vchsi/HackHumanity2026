@@ -52,7 +52,7 @@ def lease_id_by_owner(owner_id):
     return None
 
 # adds new lease data to db, returns lease_id. if new_lease=False, will just add overview and annotations to existing lease_id
-def query_lease(pathname, raw_text,owner_email="user@example.com"): # owner_id is email for now, can change later
+def query_lease(pathname, owner_email, raw_text): # owner_id is email for now, can change later
     # creates new lease, processes it, and returns response. saves file path to db
     result = sb_connector.insert_data("leases", {"owner_id": owner_email, "pathname": pathname, "raw_text": raw_text})
     if result and result.get("status") == "success":
@@ -335,3 +335,18 @@ def pull_by_userid(useremail):
         return pull_report_data(lease_id=result)
     else:        
         return {"status": "error", "message": "No leases found for the given user email"}
+    
+
+def pull_all_leases_by_owner(useremail):
+    result = sb_connector.pull_data("leases", query={"owner_email": useremail})
+    if result and result.get("status") == "success" and result.get("data"):
+        # Remove raw_text from each lease in the response for security reasons
+        leases = []
+        for lease in result["data"]:
+            lease_copy = lease.copy()
+            lease_copy.pop("raw_text", None)  # Remove raw_text if it exists
+            leases.append(lease_copy)
+        return {"status": "success", "leases": leases}
+    else:
+        return {"status": "error", "message": "No leases found for the given user email"}
+

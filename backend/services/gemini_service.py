@@ -125,7 +125,7 @@ Return ONLY valid JSON matching this schema exactly:
   "questions": [
     {{
       "question_priority": "high"|"medium"|"low",
-      "question_explaination": string|null. Explain why this question is important and what information is missing that prevents a clear analysis. Be concise but specific.,
+      "question_explanation": string|null. Explain why this question is important and what information is missing that prevents a clear analysis. Be concise but specific.,
       "question_title": string. A concise question that a tenant should ask their landlord or property manager to clarify potential risks or obligations in the lease. Focus on the most critical uncertainties that could impact the tenant's financial or legal situation.
     }}
   ]

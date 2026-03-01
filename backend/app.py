@@ -4,7 +4,7 @@ import os
 import io
 import traceback
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 from dotenv import load_dotenv
@@ -36,7 +36,7 @@ def read_root():
     return {"message": "LeaseLens AI Analysis Backend Running"}
 
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
+async def analyze(file: UploadFile = File(...), owner_email: str = Form(...)):
     print(f"Received file: {file.filename}")
     if not file.filename.endswith(('.pdf', '.doc', '.docx', '.txt')):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload PDF, Word, or Text.")
@@ -52,10 +52,11 @@ async def analyze(file: UploadFile = File(...)):
                     extracted = page.extract_text()
                     if extracted:
                         raw_text += extracted + "\n"
+            print(owner_email)
         else:
             raw_text = contents.decode('utf-8', errors='ignore')
         try:
-            result = query_lease(file.filename, raw_text=raw_text)  # Store raw text in DB for reference
+            result = query_lease(file.filename, owner_email if owner_email else "user@example.com", raw_text=raw_text)  # Store raw text in DB for reference
         except Exception as e:
             raise Exception(f"Database Error: {str(e)}")
         lease_id = result.get("lease_id")

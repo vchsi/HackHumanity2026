@@ -75,7 +75,7 @@ data specifications
             {
             "question_priority": "h(high), m(medium), l(low) - PRIORITY LEVEL OF THE QUESTION, DETERMINED BY IMPACT AND URGENCY",
             "question_title": "A QUESTION THE RENTER SHOULD ASK THE LANDLORD/LEASE OFFERER, BASED ON THE ANNOTATIONS AND OVERVIEW",
-            "question_explaination": "A BRIEF EXPLANATION OF WHY THIS QUESTION IS IMPORTANT AND WHAT THE RENTER SHOULD KNOW IN ORDER TO ASK THIS QUESTION"
+            "question_explanation": "A BRIEF EXPLANATION OF WHY THIS QUESTION IS IMPORTANT AND WHAT THE RENTER SHOULD KNOW IN ORDER TO ASK THIS QUESTION"
             }
         ]
     }
@@ -134,7 +134,7 @@ data specifications
                 "lease_id": "<Unique identifier for the question>",
                 "question_priority": "<Priority of the question: h (high), m (medium), l (low)>",
                 "question_title": "<Question the renter should ask about the lease>",
-                "question_explaination": "<Brief explanation of why this question is important and what the renter should know>",
+                "question_explanation": "<Brief explanation of why this question is important and what the renter should know>",
                 "translated": "<boolean true/false> on whether translated version exists"
                 }
             ]

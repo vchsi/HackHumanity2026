@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import DocumentViewer from '../components/DocumentViewer';
 import SidePanel from '../components/SidePanel';
 import { segmentDocument } from '../utils/documentProcessor';
+import { supabase } from '../supabaseClient';
 import type { Highlight, DocumentSegment, AnalysisResult } from '../types';
 
 export default function Analyze() {
@@ -75,11 +76,21 @@ export default function Analyze() {
         setError(null);
 
         try {
+            // Get current user's email
+            const { data: { user } } = await supabase.auth.getUser();
+            let email = ""
+            if (!user?.email) {
+                email = "anonymous@example.com"; // Fallback email if user is not authenticated
+            }
+
+            else {
+                email = user.email;
+            }
             // Step 1: Extracting & Contextualizing (Backend Call)
             setProgressStep(0);
             const formData = new FormData();
             formData.append('file', file);
-
+            formData.append('owner_email', email);
             const response = await fetch('http://localhost:8000/analyze', {
                 method: 'POST',
                 body: formData
