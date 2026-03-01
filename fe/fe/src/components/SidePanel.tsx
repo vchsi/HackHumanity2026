@@ -217,11 +217,11 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
     };
 
     const handleTranslateAndSpeak = async (lang: string) => {
-        console.log(`🌐 handleTranslateAndSpeak triggered for language: ${lang}`);
+        console.log(`handleTranslateAndSpeak triggered for language: ${lang}`);
         setIsTranslating(true);
         setShowLangMenu(false);
         try {
-            console.log("🤖 Translation via Gemini started...");
+            console.log("Translation via Gemini started...");
             const translationKey = import.meta.env.VITE_TRANSLATION_API_KEY;
             const genAI = new GoogleGenerativeAI(translationKey);
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -231,15 +231,15 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
             const response = await result.response;
             const text = response.text();
 
-            console.log("✅ Translation received:", text.substring(0, 50) + "...");
+            console.log("Translation received:", text.substring(0, 50) + "...");
             setTranslatedText(text);
             setCurrentLanguage(lang);
             setIsTranslating(false);
 
-            console.log("🎙️ Moving to Speech Flow...");
+            console.log("Moving to Speech Flow...");
             await handleSpeak(text, lang);
         } catch (err) {
-            console.error("🚨 Translation/Speech Flow failure:", err);
+            console.error("Translation/Speech Flow failure:", err);
             setIsTranslating(false);
             setIsSpeaking(false);
         }

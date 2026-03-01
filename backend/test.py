@@ -3,99 +3,110 @@ import json
 
 ex = json.loads("""
 {
-  "title": "Downtown Residential Lease Agreement / 350 Market Street, Unit 22B, Seattle / Olivia Chen",
-  "user_id": "",
+  "title": "downtown_residential_lease_2026.pdf",
+  "text_incomplete": false,
   "basic_info": {
-    "address": "350 Market Street, Unit 22B, Seattle, WA 98101"
+    "address": {
+      "value": "789 Market Street, Apt 12C, San Francisco, CA 94103",
+      "evidence_quote": "The Landlord hereby leases to Tenant the premises located at 789 Market Street, Apt 12C, San Francisco, CA 94103.",
+      "missing_reason": null
+    }
   },
   "overview": {
-    "risk_score": 74,
-    "overview_contents": "This 12-month residential lease offers a generally favorable structure with balanced risk allocation and predictable housing costs. The monthly rent is competitive for the downtown area, and the security deposit is limited to one month of rent, which keeps upfront expenses manageable. The fixed lease term protects the tenant from rent increases during the contract period, providing stability and clearer financial planning. Water and trash services are included, reducing monthly cost variability and simplifying budgeting. The agreement also outlines a defined maintenance response timeframe, improving landlord accountability. However, there are moderate concerns. The lease includes a one-month early termination fee, which creates some financial exposure if relocation becomes necessary. There is also a clause requiring landlord approval for any subleasing, which may reduce flexibility. Additionally, a move-out administrative fee is deducted from the security deposit regardless of unit condition. Overall, this lease is well structured for tenants planning to stay the full term, but renters seeking maximum flexibility should carefully review termination and subletting conditions.",
-    "rent_monthly": 2400.00,
-    "down_payment": 2400.00,
-    "duration": 365,
-    "notice_period": 45
+    "risk_score": 68,
+    "overview_contents": "This 12-month fixed-term lease offers predictable housing costs and includes certain tenant-friendly provisions such as included water and trash services. The security deposit is limited to one month’s rent, reducing upfront burden. However, the lease contains a strict early termination clause requiring payment of two months’ rent as liquidated damages, and imposes late fees after a short grace period. Overall, the lease presents moderate financial risk with limited flexibility for early relocation.",
+    "rent_monthly": {
+      "value": 3200,
+      "evidence_quote": "Monthly Rent: $3,200.00 due on the 1st day of each month.",
+      "missing_reason": null,
+      "ambiguous": false
+    },
+    "security_deposit": {
+      "value": 3200,
+      "evidence_quote": "Tenant shall pay a security deposit of $3,200.00 prior to move-in.",
+      "missing_reason": null,
+      "ambiguous": false
+    },
+    "lease_term_days": {
+      "value": 365,
+      "evidence_quote": "Lease Term: July 1, 2026 through June 30, 2027.",
+      "missing_reason": null,
+      "ambiguous": false
+    },
+    "notice_period": {
+      "value": "30 days written notice required for non-renewal after fixed term.",
+      "evidence_quote": "After expiration of the initial term, tenancy shall convert to month-to-month unless either party provides thirty (30) days written notice.",
+      "missing_reason": null
+    },
+    "late_fees": {
+      "value": "5% of monthly rent after 3-day grace period.",
+      "evidence_quote": "If rent is not received within three (3) days of the due date, Tenant shall pay a late charge equal to five percent (5%) of the monthly rent.",
+      "missing_reason": null
+    },
+    "early_termination": {
+      "value": "Two months' rent required as liquidated damages for early termination.",
+      "evidence_quote": "In the event Tenant terminates this Agreement prior to expiration of the Lease Term, Tenant shall pay liquidated damages equal to two (2) months' rent.",
+      "missing_reason": null
+    },
+    "utilities": {
+      "value": "Tenant responsible for electricity and gas; Landlord covers water and trash.",
+      "evidence_quote": "Tenant shall be responsible for electricity and gas service. Landlord shall provide water and trash service.",
+      "missing_reason": null
+    }
   },
   "results": [
     {
-      "risk_flag": "g",
-      "risk_score": "L",
-      "risk_title": "Included Water and Trash Services",
-      "risk_contents": "Utilities included in rent reduce monthly variability and support predictable budgeting.",
-      "risk_origin": "Landlord shall provide water and trash collection services at no additional cost to Tenant."
+      "annotationText": "Monthly Rent: $3,200.00 due on the 1st day of each month.",
+      "annotationLevel": "mix",
+      "annotationDesc": "Clear rent amount and due date provide predictability, but payment timing is strict and may incur penalties if delayed.",
+      "risk_title": "Rent Obligation",
+      "severity": "MEDIUM",
+      "evidence_location_hint": "Section 3 – Rent"
     },
     {
-      "risk_flag": "m",
-      "risk_score": "M",
-      "risk_title": "Early Termination Fee",
-      "risk_contents": "Requires payment of one month rent to terminate early, limiting flexibility and increasing relocation costs.",
-      "risk_origin": "Tenant may terminate this Lease early upon payment of a fee equal to one month rent with forty five days written notice."
+      "annotationText": "Tenant shall pay a security deposit of $3,200.00 prior to move-in.",
+      "annotationLevel": "good",
+      "annotationDesc": "Deposit equals one month’s rent, which is standard and financially reasonable for this market.",
+      "risk_title": "Security Deposit Amount",
+      "severity": "LOW",
+      "evidence_location_hint": "Section 4 – Security Deposit"
     },
     {
-      "risk_flag": "b",
-      "risk_score": "M",
-      "risk_title": "Mandatory Move Out Administrative Fee",
-      "risk_contents": "Non refundable administrative fee deducted from deposit regardless of property condition.",
-      "risk_origin": "A non refundable move out administrative fee of 300 dollars shall be deducted from the security deposit."
+      "annotationText": "In the event Tenant terminates this Agreement prior to expiration of the Lease Term, Tenant shall pay liquidated damages equal to two (2) months' rent.",
+      "annotationLevel": "bad",
+      "annotationDesc": "Early termination penalty is substantial and may create financial hardship if relocation becomes necessary.",
+      "risk_title": "Early Termination Penalty",
+      "severity": "HIGH",
+      "evidence_location_hint": "Section 12 – Early Termination"
     },
     {
-      "risk_flag": "m",
-      "risk_score": "L",
-      "risk_title": "Subletting Approval Requirement",
-      "risk_contents": "Requires written landlord approval before subleasing, reducing tenant flexibility.",
-      "risk_origin": "Tenant shall not sublease the Premises without prior written consent from Landlord."
-    }
-  ],
-  "annotations": [
-    {
-      "annotation_text": "Landlord shall provide water and trash collection services at no additional cost to Tenant.",
-      "annotation_level": "g",
-      "annotation_desc": "Included utilities lower financial uncertainty and improve overall lease value."
+      "annotationText": "If rent is not received within three (3) days of the due date, Tenant shall pay a late charge equal to five percent (5%) of the monthly rent.",
+      "annotationLevel": "mix",
+      "annotationDesc": "Short grace period combined with percentage-based late fee increases financial risk from minor delays.",
+      "risk_title": "Late Fee Policy",
+      "severity": "MEDIUM",
+      "evidence_location_hint": "Section 3 – Rent"
     },
     {
-      "annotation_text": "Tenant may terminate this Lease early upon payment of a fee equal to one month rent with forty five days written notice.",
-      "annotation_level": "m",
-      "annotation_desc": "Moderate financial penalty reduces flexibility in case of unexpected relocation."
-    },
-    {
-      "annotation_text": "A non refundable move out administrative fee of 300 dollars shall be deducted from the security deposit.",
-      "annotation_level": "b",
-      "annotation_desc": "Automatic deduction reduces deposit return regardless of unit condition."
-    },
-    {
-      "annotation_text": "Tenant shall not sublease the Premises without prior written consent from Landlord.",
-      "annotation_level": "m",
-      "annotation_desc": "Limits tenant flexibility and may complicate temporary relocation."
-    }
-  ],
-  "questions": [
-    {
-      "question_priority": "h",
-      "question_title": "Can the early termination fee be reduced or waived if a replacement tenant is found?",
-      "question_explaination": "Understanding whether the landlord allows mitigation through replacement tenants could significantly reduce financial risk if relocation becomes necessary."
-    },
-    {
-      "question_priority": "m",
-      "question_title": "Is the move out administrative fee negotiable or condition based?",
-      "question_explaination": "Clarifying whether the fee applies regardless of unit condition helps determine expected deposit recovery."
-    },
-    {
-      "question_priority": "m",
-      "question_title": "What criteria are used to approve a sublease request?",
-      "question_explaination": "Knowing the approval standards reduces uncertainty and helps assess practical flexibility under the lease."
+      "annotationText": "Tenant shall be responsible for electricity and gas service. Landlord shall provide water and trash service.",
+      "annotationLevel": "good",
+      "annotationDesc": "Clearly defined utility allocation reduces ambiguity and budgeting uncertainty.",
+      "risk_title": "Utility Allocation",
+      "severity": "LOW",
+      "evidence_location_hint": "Section 6 – Utilities"
     }
   ]
 }""")
 
 #print(ex)
 new_lease_data = {
-    "owner_id": "41416767",
+    "owner_id": "vchsiao36@gmail.com",
     "pathname": "lease.pdf",
     "raw_text": "Full raw text of the lease agreement goes here..."
 }
 #print(query_response(json.dumps(ex), lease_id=None, new_lease=True, new_lease_data=new_lease_data))
-#print(check_lease(18))
-#print(pull_report_data(18))
+#print(check_lease(46))
+#print(pull_report_data(46))
 """print(add_translations(18, [("r", 17, "Servicios de agua y basura incluidos|Los servicios incluidos en la renta reducen la variabilidad mensual y facilitan una presupuestación predecible|El arrendador proporcionará servicios de agua y recolección de basura sin costo adicional para el inquilino"),
     ("r", 18, "Cargo por terminación anticipada|Requiere el pago de un mes de renta para finalizar antes de tiempo, lo que limita la flexibilidad y aumenta los costos de reubicación|El inquilino podrá terminar este contrato anticipadamente mediante el pago de una suma equivalente a un mes de renta con un aviso por escrito de cuarenta y cinco días"),
     ("r", 19, "Cargo administrativo obligatorio por mudanza|Cuota administrativa no reembolsable deducida del depósito independientemente del estado de la propiedad|Se deducirá del depósito de seguridad una cuota administrativa no reembolsable de 300 dólares por concepto de mudanza"),
@@ -108,4 +119,4 @@ new_lease_data = {
     ("q", 4, "¿Puede reducirse o eliminarse el cargo por terminación anticipada si se encuentra un inquilino de reemplazo?|Comprender si el arrendador permite mitigar el costo mediante un reemplazo puede reducir significativamente el riesgo financiero en caso de reubicación"),
     ("q", 5, "¿La cuota administrativa por mudanza es negociable o depende del estado de la unidad?|Aclarar si la cuota se aplica independientemente de las condiciones ayuda a estimar cuánto del depósito será recuperado"),
     ("q", 6, "¿Qué criterios se utilizan para aprobar una solicitud de subarrendamiento?|Conocer los estándares de aprobación reduce la incertidumbre y permite evaluar la flexibilidad real del contrato")], "es"))"""
-print(get_translated_report_data(18, "es"))
+#print(get_translated_report_data(18, "es"))

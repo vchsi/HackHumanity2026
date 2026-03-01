@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 import io
@@ -7,6 +8,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 from dotenv import load_dotenv
+from backend_logic import query_response, query_lease
 
 # Ensure the backend directory is in the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -20,7 +22,10 @@ app = FastAPI()
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",  # Vite default
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +54,12 @@ async def analyze(file: UploadFile = File(...)):
                         raw_text += extracted + "\n"
         else:
             raw_text = contents.decode('utf-8', errors='ignore')
+        try:
+            result = query_lease(file.filename, raw_text=raw_text)  # Store raw text in DB for reference
+        except Exception as e:
+            raise Exception(f"Database Error: {str(e)}")
+        lease_id = result.get("lease_id")
+        print(f"new lease created @ Lease ID: {lease_id}")
     except Exception as e:
         print(f"Extraction Error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to extract text: {str(e)}")
@@ -61,6 +72,8 @@ async def analyze(file: UploadFile = File(...)):
     # 2. Analyze using Service
     try:
         analysis_data = await gemini_service.analyze_lease(file.filename, raw_text)
+        result2 = query_response(json.dumps(analysis_data), lease_id=lease_id, new_lease=False, new_lease_data=None)
+        print(f"Analysis complete for Lease ID: {lease_id}")
         # Ensure the frontend gets the original text for the highlighter to work reliably
         analysis_data["full_text"] = raw_text
         return analysis_data

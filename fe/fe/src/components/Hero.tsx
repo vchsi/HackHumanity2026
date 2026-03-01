@@ -18,7 +18,7 @@ export default function Hero() {
                     AI-Powered Lease Analyzer
                 </div>
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-6 md:mb-10 leading-[1.05] text-[#4A3424]">
-                    Don't sign blindly.
+                    <span style={{textDecoration: "underline", textDecorationColor: "#D9734E"}}>Don't</span> sign blindly.
                 </h1>
 
                 <p className="text-[#8A6B53] font-bold text-lg md:text-xl max-w-md mx-auto md:mx-0 pb-8 md:pb-12">

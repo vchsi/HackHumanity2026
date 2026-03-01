@@ -6,7 +6,7 @@ import traceback
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
 from dotenv import load_dotenv
-
+from backend_logic import query_response, query_lease
 load_dotenv()
 
 class GeminiService:
@@ -19,18 +19,19 @@ class GeminiService:
         genai.configure(api_key=api_key)
         
         # User specifically asked for Gemini 2.5 Flash
-        # We verified the model name via genai.list_models()
+        # We verified the model name via gensai.list_models()
         self.model_name = "models/gemini-2.5-flash" 
         self.model = genai.GenerativeModel(self.model_name)
 
     async def analyze_lease(self, filename: str, raw_text: str):
         # 2-minute overview summary prompt with strict JSON structure
         prompt = f"""
-You are LeaseLens, an informational rental-lease analyzer (NOT a lawyer).
+You are Leasify, an informational rental-lease analyzer (NOT a lawyer).
 Your job: extract only what is explicitly present in the lease text and produce a short, reliable summary.
-DO NOT guess. If something is missing or unclear, set it to null and explain briefly in "missing_reason".
-Always support key outputs with an EXACT quote from the lease in "evidence_quote".
-
+DO NOT guess. If something is missing or unclear, set it to null and explain briefly in "missing_reason". Do not use strong vocabulary,
+instead opt for powerful, neutral language. Always support key outputs with an EXACT quote from the lease in "evidence_quote". Try to produce at least 7 annotations.
+For questions, try to generate at least 3-5 high-priority questions that a tenant should ask their landlord to clarify potential risks or obligations in the lease. Focus on the most critical uncertainties that could impact the tenant's financial or legal situation. 
+Make sure the questions are easily understood by users and directly related to the most important lease terms. If the lease text is truncated and you suspect missing sections, mark "text_incomplete": true.
 INPUT
 - LEASE TITLE / FILE: {filename}
 - RAW TEXT (may be partial): {raw_text[:20000]}
@@ -120,6 +121,13 @@ Return ONLY valid JSON matching this schema exactly:
       "severity": "HIGH"|"MEDIUM"|"LOW",
       "evidence_location_hint": string|null
     }}
+  ],
+  "questions": [
+    {{
+      "question_priority": "high"|"medium"|"low",
+      "question_explaination": string|null. Explain why this question is important and what information is missing that prevents a clear analysis. Be concise but specific.,
+      "question_title": string. A concise question that a tenant should ask their landlord or property manager to clarify potential risks or obligations in the lease. Focus on the most critical uncertainties that could impact the tenant's financial or legal situation.
+    }}
   ]
 }}
 
@@ -152,11 +160,11 @@ STYLE
                     
             except ResourceExhausted as e:
                 wait_time = 35 * (attempt + 1)  # 35s, 70s, 105s
-                print(f"⚠️ Gemini rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s before retry...")
+                print(f"Gemini rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s before retry...")
                 if attempt < max_retries - 1:
                     time.sleep(wait_time)
                 else:
-                    print(f"❌ All {max_retries} retries exhausted. Rate limit still active.")
+                    print(f"All {max_retries} retries exhausted. Rate limit still active.")
                     raise Exception(
                         "Gemini free-tier rate limit reached (20 requests/day for gemini-2.5-flash). "
                         "Wait ~30 seconds and try again, or upgrade your Google AI API plan."
