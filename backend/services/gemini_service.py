@@ -3,11 +3,15 @@ import json
 import re
 import time
 import traceback
+from pathlib import Path
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
 from dotenv import load_dotenv
 from backend_logic import query_response, query_lease
-load_dotenv()
+
+# Load .env from the backend directory explicitly
+_backend_env = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_backend_env, override=True)
 
 class GeminiService:
     def __init__(self):

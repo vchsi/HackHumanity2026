@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { UploadCloud, FileText, CheckCircle2, Loader2, ArrowLeft, FileSearch, ShieldCheck, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { UploadCloud, FileText, CheckCircle2, Loader2, ArrowLeft, FileSearch, ShieldCheck, AlertCircle, Cloud, Brain, Sparkles, ScanLine, FileCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -7,9 +7,47 @@ import Footer from '../components/Footer';
 import DocumentViewer from '../components/DocumentViewer';
 import SidePanel from '../components/SidePanel';
 import { segmentDocument } from '../utils/documentProcessor';
+import { useAuth } from '../components/AuthContext';
 import type { Highlight, DocumentSegment, AnalysisResult } from '../types';
 
+// Smooth fake progress that simulates real SaaS processing
+function useFakeProgress(isActive: boolean, isDone: boolean) {
+    const [progress, setProgress] = useState(0);
+    const intervalRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (!isActive) {
+            setProgress(0);
+            return;
+        }
+        if (isDone) {
+            setProgress(100);
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return;
+        }
+
+        let current = 0;
+        intervalRef.current = setInterval(() => {
+            // Fast at start, slows down as it approaches ~85%
+            if (current < 20) current += Math.random() * 3 + 1.5;
+            else if (current < 50) current += Math.random() * 2 + 0.8;
+            else if (current < 75) current += Math.random() * 1.2 + 0.3;
+            else if (current < 85) current += Math.random() * 0.4 + 0.05;
+            else current += Math.random() * 0.1;
+
+            current = Math.min(current, 88); // Never exceed 88% until done
+            setProgress(current);
+        }, 300);
+
+        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }, [isActive, isDone]);
+
+    return progress;
+}
+
 export default function Analyze() {
+    const { session } = useAuth();
+
     // Tracking/Flow States
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -17,6 +55,7 @@ export default function Analyze() {
     const [isDragging, setIsDragging] = useState(false);
     const [showResult, setShowResult] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [apiDone, setApiDone] = useState(false);
 
     // Detailed Result States
     const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
@@ -27,10 +66,12 @@ export default function Analyze() {
     const [currentTime, setCurrentTime] = useState<number>(0);
     const [finalTime, setFinalTime] = useState<number>(0);
 
+    const fakeProgress = useFakeProgress(isUploading, apiDone);
+
     // Timer Logic
     useEffect(() => {
         let interval: any;
-        if (isUploading && progressStep < 4) {
+        if (isUploading && !apiDone) {
             interval = setInterval(() => {
                 if (startTime) {
                     setCurrentTime((Date.now() - startTime) / 1000);
@@ -40,7 +81,16 @@ export default function Analyze() {
             clearInterval(interval);
         }
         return () => clearInterval(interval);
-    }, [isUploading, progressStep, startTime]);
+    }, [isUploading, apiDone, startTime]);
+
+    // Auto-advance fake steps based on progress
+    useEffect(() => {
+        if (fakeProgress >= 15 && progressStep < 1) setProgressStep(1);
+        if (fakeProgress >= 40 && progressStep < 2) setProgressStep(2);
+        if (fakeProgress >= 65 && progressStep < 3) setProgressStep(3);
+        if (fakeProgress >= 80 && progressStep < 4) setProgressStep(4);
+        if (fakeProgress >= 100 && progressStep < 5) setProgressStep(5);
+    }, [fakeProgress, progressStep]);
 
     const selectedHighlight = analysisData?.highlights.find(h => h.id === selectedHighlightId) || null;
 
@@ -68,6 +118,7 @@ export default function Analyze() {
     const handleStartAnalysis = async () => {
         if (!file) return;
         setIsUploading(true);
+        setApiDone(false);
         const now = Date.now();
         setStartTime(now);
         setCurrentTime(0);
@@ -75,10 +126,11 @@ export default function Analyze() {
         setError(null);
 
         try {
-            // Step 1: Extracting & Contextualizing (Backend Call)
-            setProgressStep(0);
             const formData = new FormData();
             formData.append('file', file);
+            if (session?.user?.email) {
+                formData.append('owner_email', session.user.email);
+            }
 
             const response = await fetch('http://localhost:8000/analyze', {
                 method: 'POST',
@@ -91,9 +143,6 @@ export default function Analyze() {
             }
 
             const data = await response.json();
-
-            // Step 2: Mapping AI Annotations...
-            setProgressStep(1);
 
             const rawFullText = data.full_text || "";
             const rawResults = data.results || [];
@@ -143,24 +192,25 @@ export default function Analyze() {
                 highlights: highlights
             };
 
-            // Step 3: Generating Display Segments...
-            setProgressStep(2);
             const docSegments = segmentDocument(rawFullText, highlights);
 
-            setTimeout(() => {
-                setProgressStep(4);
-                const completeTime = (Date.now() - now) / 1000;
-                setFinalTime(completeTime);
+            // Signal done — fake progress will jump to 100%
+            setApiDone(true);
+            const completeTime = (Date.now() - now) / 1000;
+            setFinalTime(completeTime);
 
-                // Set result only after we are absolutely sure data is ready
+            // Small delay for the 100% animation to play
+            setTimeout(() => {
+                setProgressStep(6); // final "complete" state
                 setAnalysisData(analysis);
                 setSegments(docSegments);
-            }, 1500);
+            }, 1200);
 
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Failed to analyze document.");
             setIsUploading(false);
+            setApiDone(false);
         }
     };
 
@@ -171,6 +221,7 @@ export default function Analyze() {
     const handleNewAnalysis = () => {
         setFile(null);
         setIsUploading(false);
+        setApiDone(false);
         setProgressStep(0);
         setShowResult(false);
         setAnalysisData(null);
@@ -189,10 +240,11 @@ export default function Analyze() {
     };
 
     const steps = [
-        "Sending to Leasify AI Cloud...",
-        "Detecting risks & patterns...",
-        "Mapping legal annotations...",
-        "Generating human-friendly summary..."
+        { label: "Uploading to Leasify Cloud", icon: Cloud, sub: "Encrypting & transmitting your document" },
+        { label: "Extracting document text", icon: ScanLine, sub: "Parsing pages & recognizing content" },
+        { label: "Running AI risk analysis", icon: Brain, sub: "Gemini is scanning for risks & patterns" },
+        { label: "Mapping legal annotations", icon: Sparkles, sub: "Flagging important clauses & obligations" },
+        { label: "Generating your report", icon: FileCheck, sub: "Building human-friendly summary" },
     ];
 
     return (
@@ -302,63 +354,109 @@ export default function Analyze() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="w-full max-w-2xl flex flex-col items-center transition-opacity duration-500 opacity-100 relative z-10 bg-[#F2E3D5]/90 p-12 rounded-[3.5rem] backdrop-blur-sm">
-                                <div className="relative mb-16 flex flex-col items-center">
-                                    <div className="absolute inset-0 bg-[#D9734E] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-                                    <h2 className="text-4xl md:text-6xl font-black text-[#4A3424] text-center w-full tracking-tight relative z-10">
-                                        {progressStep >= 4 ? "Scan Complete!" : "Leasify AI processing..."}
-                                    </h2>
-                                    <p className="mt-4 font-black text-[#D9734E] text-2xl tracking-widest relative z-10 flex items-center gap-3">
-                                        {progressStep >= 4 ? (
-                                            <span className="bg-white px-6 py-2 rounded-2xl border-[3px] border-[#5A4231] text-[#5A4231]">
-                                                Total Time: {finalTime.toFixed(1)}s
-                                            </span>
-                                        ) : (
-                                            <span className="font-mono">{currentTime.toFixed(1)}s</span>
-                                        )}
+                            <div className="w-full max-w-2xl flex flex-col items-center transition-opacity duration-500 opacity-100 relative z-10 bg-white/80 p-10 md:p-14 rounded-[3rem] backdrop-blur-md border-[3px] border-[#5A4231]/10 shadow-2xl">
+                                {/* Top status */}
+                                <div className="w-full mb-8">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h2 className="text-2xl md:text-3xl font-black text-[#4A3424] tracking-tight">
+                                            {progressStep >= 6 ? "Analysis Complete" : "Analyzing your lease..."}
+                                        </h2>
+                                        <span className="font-mono font-black text-[#D9734E] text-xl tabular-nums">
+                                            {progressStep >= 6 ? `${finalTime.toFixed(1)}s` : `${currentTime.toFixed(1)}s`}
+                                        </span>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div className="w-full h-3 bg-[#F2E3D5] rounded-full overflow-hidden border border-[#5A4231]/10">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500 ease-out"
+                                            style={{
+                                                width: `${Math.round(fakeProgress)}%`,
+                                                background: fakeProgress >= 100
+                                                    ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                                                    : 'linear-gradient(90deg, #D9734E, #E8956F)',
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-right font-black text-[#8A6B53]/50 text-xs mt-1.5 tracking-wide">
+                                        {Math.round(fakeProgress)}%
                                     </p>
                                 </div>
-                                <div className="flex flex-col gap-12 w-full px-6 md:px-16 relative">
-                                    <div className="absolute left-[3.35rem] md:left-[5.25rem] top-10 bottom-10 w-[4px] bg-[#8A6B53]/20 rounded-full -z-10"></div>
+
+                                {/* Steps */}
+                                <div className="flex flex-col gap-4 w-full">
                                     {steps.map((step, index) => {
                                         const isActive = progressStep === index;
                                         const isDone = progressStep > index;
+                                        const StepIcon = step.icon;
                                         return (
-                                            <div key={index} className={`flex items-center gap-8 md:gap-12 transition-all duration-700 transform ${progressStep >= index ? 'opacity-100 translate-x-0' : 'opacity-20 -translate-x-6'}`}>
-                                                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-[4px] flex items-center justify-center shrink-0 transition-all duration-500 ${isDone ? 'bg-[#D9734E] border-[#5A4231] text-white shadow-[6px_6px_0_0_#5A4231] scale-110' : isActive ? 'bg-white border-[#D9734E] text-[#D9734E] scale-100 shadow-[0_0_20px_rgba(217,115,78,0.4)]' : 'bg-transparent border-[#8A6B53]/30 text-[#8A6B53]/30'}`}>
-                                                    {isDone ? <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12" strokeWidth={3.5} /> : isActive ? <Loader2 className="w-10 h-10 md:w-12 md:h-12 animate-spin" strokeWidth={3} /> : <div className="w-5 h-5 rounded-full bg-current" />}
+                                            <div
+                                                key={index}
+                                                className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-500 ${
+                                                    isDone ? 'bg-emerald-50/80 border border-emerald-200/50' :
+                                                    isActive ? 'bg-[#D9734E]/5 border border-[#D9734E]/20 shadow-sm' :
+                                                    'opacity-40'
+                                                }`}
+                                            >
+                                                {/* Step indicator */}
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${
+                                                    isDone ? 'bg-emerald-500 text-white' :
+                                                    isActive ? 'bg-[#D9734E] text-white shadow-lg shadow-[#D9734E]/25' :
+                                                    'bg-[#F2E3D5] text-[#8A6B53]/40'
+                                                }`}>
+                                                    {isDone ? (
+                                                        <CheckCircle2 className="w-5 h-5" strokeWidth={3} />
+                                                    ) : isActive ? (
+                                                        <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2.5} />
+                                                    ) : (
+                                                        <StepIcon className="w-5 h-5" strokeWidth={2} />
+                                                    )}
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <p className={`font-black tracking-tight text-2xl md:text-3xl transition-all duration-500 ${isDone ? 'text-[#4A3424]' : isActive ? 'text-[#D9734E]' : 'text-[#8A6B53]'}`}>
-                                                        {step}
+
+                                                {/* Step text */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`font-black text-sm tracking-tight transition-colors ${
+                                                        isDone ? 'text-emerald-700' :
+                                                        isActive ? 'text-[#D9734E]' :
+                                                        'text-[#8A6B53]'
+                                                    }`}>
+                                                        {step.label}
                                                     </p>
                                                     {isActive && (
-                                                        <div className="flex flex-col gap-1 mt-2">
-                                                            <p className="text-[#8A6B53] font-black text-[10px] md:text-xs uppercase tracking-widest animate-pulse">Running Cloud Analysis...</p>
-                                                            <p className="text-[#8A6B53]/60 font-bold text-[9px] md:text-xs italic leading-tight">
-                                                                *The more page require more time to handle pls don close this tab
-                                                            </p>
-                                                        </div>
+                                                        <p className="text-[#8A6B53]/50 text-xs font-bold mt-0.5 animate-pulse">
+                                                            {step.sub}
+                                                        </p>
+                                                    )}
+                                                    {isDone && (
+                                                        <p className="text-emerald-600/60 text-xs font-bold mt-0.5">Done</p>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })}
-
-                                    {progressStep >= 4 && (
-                                        <div className="mt-12 flex flex-col items-center animate-in zoom-in slide-in-from-bottom-6 duration-700 delay-300 w-full">
-                                            <button
-                                                onClick={handleViewReport}
-                                                className="w-full max-w-md bg-[#D9734E] text-[#FDF8F5] border-[4px] border-[#5A4231] font-black tracking-widest py-6 px-12 rounded-[2rem] shadow-[10px_10px_0_0_#5A4231] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[7px_7px_0_0_#5A4231] hover:bg-[#C26341] text-2xl flex items-center justify-center gap-4 transition-all"
-                                            >
-                                                <FileText strokeWidth={2.5} size={32} /> VIEW MY REPORT
-                                            </button>
-                                            <p className="mt-6 text-[#8A6B53] font-bold text-sm tracking-widest uppercase opacity-70">
-                                                Everything is ready for your review.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
+
+                                {/* Warning */}
+                                {progressStep < 6 && (
+                                    <p className="text-[#8A6B53]/40 text-xs font-bold mt-6 text-center">
+                                        Please don't close this tab. Larger documents take more time.
+                                    </p>
+                                )}
+
+                                {/* View Report */}
+                                {progressStep >= 6 && (
+                                    <div className="mt-8 flex flex-col items-center w-full animate-in zoom-in slide-in-from-bottom-4 duration-700">
+                                        <button
+                                            onClick={handleViewReport}
+                                            className="w-full max-w-sm bg-[#D9734E] text-[#FDF8F5] border-[3px] border-[#5A4231] font-black tracking-wide py-5 px-10 rounded-2xl shadow-[6px_6px_0_0_#5A4231] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[4px_4px_0_0_#5A4231] hover:bg-[#C26341] text-lg flex items-center justify-center gap-3 transition-all active:translate-y-[6px] active:translate-x-[6px] active:shadow-none"
+                                        >
+                                            <FileText strokeWidth={2.5} size={24} /> View My Report
+                                        </button>
+                                        <p className="mt-4 text-[#8A6B53]/50 font-bold text-sm">
+                                            Your report is ready for review.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
