@@ -1,0 +1,141 @@
+to add a "lease" to a database
+1) import backendlogic
+    1.1) upload a lease via front-end + fastapi. process with pdfplumber, save to local and save pathname in next function
+2) query_lease(pathname from upload, owner_email from front-end, raw_text from processed pdf) 
+    2.1) this step comes after the pdf is uploaded and text is extracted via pdfplumber
+    2.2) returns a lease_id. keep track of this in cookies (front end), use this to record the lease into the db after ai generation
+3) query_response(response from llm (see ds1.1), lease_id = lease_id from cookies, owner_id lookup, or saved call)
+    3.1) return value: lease_id if success, error if fail
+    3.2) implement error handling in case of mishap
+
+
+to add a set of translations to a database
+1) retrieve translation info from front end
+    1.1) includes: lease_id, language (2-letter/4-letter code, mapped to dictionary)
+2) use GEMINI to translate via prompt
+    2.1) pass in ds1.2 to ensure consistency in translation
+    2.2) implement error handling in case of AI misunderstanding
+3) add into database via add_translations(lease_id from frontend, translations from GEMINI, language_code (2/4 digit from frontend))
+    3.1) important enough to restate: make sure to add error handling to handle occasional AI mishaps
+    3.2) returns # of translations added if success, error if fail
+
+to pull a lease from the database
+1) retrieve lease id from owner lookup with lease_id_by_owner(owner_id = owner_email from frontend)
+2) pull_report_data(lease_id from prior call)
+    2.1) returns lease data in form of ds1.3, use front end to parse into actionable text
+    2.2) returns if true, if error, exception will be called
+
+to pull translations from the database
+1) recieve lease_id (or owner_id) from frontend, as well as translation_language_code
+2) if translation_language_code not found in owner's translations, go add (see part 2)
+3) if found, get_translated_report_data(lease_id from owner_lookup or frontend, language_code from front end)
+    3.1) should return data in form of ds1.3, but replaces english text with custom language text
+4) send back to front-end
+    4.1) set front end flag to indicate text is in another language. update elevenlabs as result
+
+
+data specifications
+1.1 - ai-generated lease overview (JSON))
+    input data)
+        {
+            "title": "TITLE OF LEASE / ADDRESS",
+            "user": "NAME OF USER",
+            "raw_text": "RAW TEXT GIVEN (long form text)"
+        }
+
+    output data)
+    {
+        "title": "TITLE OF LEASE / ADDRESS / USER",
+        "basic_info": {
+            "address": "ADDRESS OF PROPERTY"
+        },
+        "overview": {
+            "risk_score": "RISK SCORE BASED ON FACTORS DETERMINED (0-100, INTEGER, HIGHER SCORES=BETTER)",
+            "overview_contents": "A 2-minute LONG OVERVIEW OF THE PROS AND CONS OF THE SPECIFIC LEASE, AND HOW THIS MAY AFFECT THE RENTER",
+            "rent_monthly": "MONTHLY RENT FROM LEASE (decimal)",
+            "down_payment": "SECURITY DEPOSIT (decimal)",
+            "duration": "DURATION OF LEASE (IN DAYS, INTEGER)",
+            "notice_period": "PERIOD OF WITHDRAWAL NOTICE (IN DAYS, INTEGER)"
+        },
+        "results": [
+            {
+                "risk_flag": "RISK LEVEL OF ANNOTATION (enum: either b|m|g, representing red/yellow/green or bad/mixed/good)",
+                "risk_score": "RISK SCORE OF ANNOTATION (enum: either H(high), M(medium), or L(low) depending on impact)",
+                "risk_title": "TITLE OF CLAUSE/POLICY WHICH CAUSES ANNOTATION",
+                "risk_contents": "SHORT, <50 WORD DESCRIPTION JUSTIFYING RISK AND LISTING POTENTIAL IMPACTS",
+                "risk_origin": "SPECIFIC TEXT FROM LEASE WHICH CAUSES RISK"
+            }
+        ],
+        "annotations": [
+            {"annotation_text": "EXACT TEXT FROM THE LEASE AGREEMENT",
+            "annotation_level": "b(bad)|m(medium)|g(good) - RISK LEVEL OF THE ANNOTATION",
+            "annotation_desc": "CONCISE DESCRIPTION OF THE ANNOTATION, JUSTIFICATION OF LEVEL+IMPACT"}
+        ],
+        "questions": [
+            {
+            "question_priority": "h(high), m(medium), l(low) - PRIORITY LEVEL OF THE QUESTION, DETERMINED BY IMPACT AND URGENCY",
+            "question_title": "A QUESTION THE RENTER SHOULD ASK THE LANDLORD/LEASE OFFERER, BASED ON THE ANNOTATIONS AND OVERVIEW",
+            "question_explaination": "A BRIEF EXPLANATION OF WHY THIS QUESTION IS IMPORTANT AND WHAT THE RENTER SHOULD KNOW IN ORDER TO ASK THIS QUESTION"
+            }
+        ]
+    }
+    important. DO NOT PUT ANY CONTROL CHARACTERS IN THE STRINGS (e.g., \n, \t, etc.) AND MAKE SURE TO ESCAPE ANY QUOTES PROPERLY. THIS CAN CAUSE ISSUES WITH SQL QUERIES AND JSON PARSING.
+
+1.2 - translation set for one lease (tuples))
+    input: output from pull_data(lease_id) (see 1.1ds)
+    output: 
+        lease_id: lease id, 
+        translations: list(
+            tuple(content_type="o(overview)/q(question)/a(annotation)/r(result)",obj_id=int,translated_data=string("translatedpart1|translatedpart2") seperated with bar (|))), 
+        language_code: language code of translation (e.g., "es" for Spanish)
+
+1.3 - output from pull_data)
+    input: lease_id and language_code (if calling get_translated_report_data)
+    output:
+        {
+            "lease_id": "<Unique identifier for the lease>",
+            "overview": {
+                "id": "<Unique identifier for the overview>",
+                "created_at": "<ISO timestamp of overview creation>",
+                "overview_content": "<Brief textual summary of the lease structure, risks, and benefits>",
+                "risk_val": "<Overall numeric risk score for the lease (0-100, higher is better)>",
+                "cost_mo": "<Monthly rent amount in decimal format>",
+                "cost_dep": "<Security deposit amount in decimal format>",
+                "duration": "<Lease duration in days (integer)>",
+                "period": "<Notice period required for early termination or withdrawal in days (integer)>",
+                "translated": "<boolean true/false> on whether translated version exists"
+            },
+            "results": [
+                {
+                "id": "<Unique identifier for this clause analysis>",
+                "lease_id": "<Lease identifier for this clause analysis>",
+                "ov_id": "<Overview identifier for this clause analysis>",
+                "risk_flag": "<Risk level of clause: g (good), m (mixed), b (bad)>",
+                "risk_score": "<Impact level of clause: H (high), M (medium), L (low)>",
+                "risk_title": "<Title or name of the clause or policy>",
+                "risk_description": "<Short description of why this clause is risky/beneficial and its potential impact>",
+                "risk_origin": "<Exact text from the lease that this analysis refers to>",
+                "translated": "<boolean true/false> on whether translated version exists"
+                }
+            ],
+            "annotations": [
+                {
+                "id": "<Unique identifier for the annotation>",
+                "lease_id": "<Unique identifier for the annotation>",
+                "annotation_level": "<Risk level of annotation: g (good), m (medium), b (bad)>",
+                "annotation_text": "<Exact text from the lease that is annotated>",
+                "annotation-description": "<Concise explanation of why this text is annotated, including potential impact or benefit>",
+                "translated": "<boolean true/false> on whether translated version exists"
+                }
+            ],
+            "questions": [
+                {
+                "id": "<Unique identifier for the question>",
+                "lease_id": "<Unique identifier for the question>",
+                "question_priority": "<Priority of the question: h (high), m (medium), l (low)>",
+                "question_title": "<Question the renter should ask about the lease>",
+                "question_explaination": "<Brief explanation of why this question is important and what the renter should know>",
+                "translated": "<boolean true/false> on whether translated version exists"
+                }
+            ]
+        }

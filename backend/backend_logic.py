@@ -45,6 +45,11 @@ def pull_lease_data(lease_id, tables=["leases"]):
         return result["data"][0]
     return None
 
+def lease_id_by_owner(owner_id):
+    result = sb_connector.pull_column("leases", columns="id", criteria={"owner_id": owner_id})
+    if result and result.get("status") == "success" and result.get("data"):
+        return result["data"][0]["id"]
+    return None
 
 # adds new lease data to db, returns lease_id. if new_lease=False, will just add overview and annotations to existing lease_id
 def query_lease(pathname, owner_email, raw_text): # owner_id is email for now, can change later
