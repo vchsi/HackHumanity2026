@@ -1,0 +1,29 @@
+input data:
+{
+    "title": "TITLE OF LEASE / ADDRESS",
+    "user": "NAME OF USER",
+    "raw_text": "RAW TEXT GIVEN (long form text)"
+}
+
+output data:
+{
+    "title": "TITLE OF LEASE / ADDRESS / USER",
+    "basic_info": {
+        "address": "ADDRESS OF PROPERTY"
+    },
+    "overview": {
+        "risk_score": "RISK SCORE BASED ON FACTORS DETERMINED (OUT OF 0-100, INTEGER)",
+        "overview_contents": "A 2-minute LONG OVERVIEW OF THE PROS AND CONS OF THE SPECIFIC LEASE, AND HOW THIS MAY AFFECT THE RENTER",
+        "rent_monthly": "MONTHLY RENT FROM LEASE (decimal)",
+        "down_payment": "SECURITY DEPOSIT (decimal)",
+        "duration": "DURATION OF LEASE (IN DAYS, INTEGER)",
+        "notice_period": "PERIOD OF WITHDRAWAL NOTICE (IN DAYS, INTEGER)"
+    },
+    "results": {
+        "risk_flag": "RISK LEVEL OF ANNOTATION (enum: either "r" for red flag, "go" for benefit, "m" for mixed)",
+        "risk_score": "RISK SCORE OF ANNOTATION (enum: either HIGH (H), MEDIUM (M), or LOW (L) depending on impact)",
+        "risk_title": "TITLE OF CLAUSE/POLICY WHICH CAUSES ANNOTATION",
+        "risk_contents": "SHORT, <50 WORD DESCRIPTION JUSTIFYING RISK AND LISTING POTENTIAL IMPACTS",
+        "risk_origin": "SPECIFIC TEXT FROM LEASE WHICH CAUSES RISK"
+    }
+}

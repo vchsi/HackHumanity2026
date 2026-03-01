@@ -18,7 +18,6 @@ async def analyze(file: UploadFile = File(...)):
         text = ""
         for page in pdf.pages:
             text += page.extract_text() or ""
-
     return {
         "filename": file.filename,
         "extracted_text_preview": text[:500]
