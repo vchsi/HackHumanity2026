@@ -25,6 +25,6 @@ class SBConnector:
             print(f"Error inserting data into Supabase: {e}")
             return None
     
-    
+
 
 SBConnector()
