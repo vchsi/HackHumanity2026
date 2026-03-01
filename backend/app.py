@@ -133,6 +133,17 @@ async def get_history(email: str = Query(...)):
         print(f"History Error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/report/{lease_id}")
+async def get_report(lease_id: int):
+    """Fetch detailed report for a given lease ID."""
+    try:
+        report_data = pull_report_data(lease_id)
+        if not report_data:
+            raise HTTPException(status_code=404, detail="Report not found for this lease ID.")
+        return report_data
+    except Exception as e:
+        print(f"Report Error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")

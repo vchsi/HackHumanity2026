@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, ShieldCheck, AlertTriangle, Clock, ChevronRight, Search, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -19,6 +19,7 @@ interface LeaseHistoryItem {
 
 export default function History() {
     const { isLoggedIn, session } = useAuth();
+    const navigate = useNavigate();
     const [leases, setLeases] = useState<LeaseHistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -142,6 +143,7 @@ export default function History() {
                                 return (
                                     <div
                                         key={lease.id}
+                                        onClick={() => navigate(`/analyze?lease_id=${lease.id}`)}
                                         className="group bg-white border-[3px] border-[#5A4231]/15 rounded-2xl p-6 hover:border-[#D9734E]/40 hover:shadow-[6px_6px_0_0_#D9734E15] transition-all cursor-pointer"
                                     >
                                         <div className="flex items-center gap-5">
@@ -193,7 +195,6 @@ export default function History() {
                     </div>
                 )}
             </main>
-
             <Footer />
         </div>
     );
