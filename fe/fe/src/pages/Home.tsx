@@ -3,10 +3,14 @@ import Hero from '../components/Hero'
 import Features from '../components/Features'
 import Metrics from '../components/Metrics'
 import Footer from '../components/Footer'
+import FloatingTerms from '../components/FloatingTerms'
 
 export default function Home() {
     return (
-        <div className="min-h-screen bg-[#FDF8F5] text-[#5A4231] font-sans flex flex-col selection:bg-[#D9734E] selection:text-white overflow-x-hidden">
+        <div className="min-h-screen bg-[#FDF8F5] text-[#5A4231] font-sans flex flex-col selection:bg-[#D9734E] selection:text-white overflow-x-hidden relative">
+            {/* Background lease terms filling the whitespace */}
+            <FloatingTerms />
+
             <Header />
             <Hero />
             <Features />

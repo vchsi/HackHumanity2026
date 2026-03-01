@@ -1,6 +1,6 @@
 # LeaseLens
 
-**LeaseLens** is an AI-powered tool that turns complex rental lease agreements into **plain-language summaries**, **highlights risky clauses**, and helps renters understand what they’re signing **before committing**.
+**LeaseLens** is an AI-powered tool that turns complex  lease agreements into **plain-language summaries**, **highlights risky clauses**, and helps renters understand what they’re signing **before committing**.
 
 It is designed especially for **student housing**, **immigrant housing**, and **international/foreign renters** who often face language barriers, time pressure, and power imbalances when signing leases.
 
