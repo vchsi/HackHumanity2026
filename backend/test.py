@@ -70,9 +70,12 @@ ex = json.loads("""
 }""")
 
 #print(ex)
-new_lease_data = {
-    "owner_id": "41416767",
-    "pathname": "lease.pdf",
-    "raw_text": "Full raw text of the lease agreement goes here..."
-}
-print(query_response(json.dumps(ex), lease_id=None, new_lease=True, new_lease_data=new_lease_data))
+#new_lease_data = {
+#    "owner_id": "41416767",
+#    "pathname": "lease.pdf",
+#    "raw_text": "Full raw text of the lease agreement goes here..."
+#}
+#print(query_response(json.dumps(ex), lease_id=None, new_lease=True, new_lease_data=new_lease_data))
+#print(check_lease(11))
+#print(pull_report_data(11))
+print(add_translations(11, [{"annotation_id": 1, "translated_text": "房东应免费为租户提供水和标准互联网接入服务。"}, {"annotation_id": 2, "translated_text": "强制性250美元专业清洁费将在租户搬出时从押金中扣除。"}, {"annotation_id": 3, "translated_text": "租户不得在未经房东事先书面同意的情况下转租该物业。"}, {"annotation_id": 4, "translated_text": "如果租金在到期日后的三天内未到账，则将收取相当于月租金4%的滞纳金。"}], "zh-CN"))

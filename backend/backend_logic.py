@@ -30,29 +30,42 @@ def process_pdf(file_path, username):
 
 # will tie in with amd
 """
+def check_lease(lease_id):
+    # returns true if lease is valid, false otherwise
+    if not lease_id:
+        return False
+    result = sb_connector.pull_data("leases", query={"id": lease_id})
+    if result and result.get("status") == "success" and result.get("data"):
+        return True
+    return False
 
-def pull_lease_data(lease_id, tables=["lease_data"]):
-    # for multiple tables, join on lease_id and return combined data
-    # for now, just pull from one table
-    result = sb_connector.pull_data("lease_data", query={"lease_id": lease_id})
+def pull_lease_data(lease_id, tables=["leases"]):
+    result = sb_connector.pull_data("leases", query={"id": lease_id})
     if result and result.get("status") == "success" and result.get("data"):
         return result["data"][0]
     return None
 
-def query_lease_data(lease_id, query):
-    # pull lease data and apply query (e.g., filter for specific clauses)
-    lease_data = pull_lease_data(lease_id)
-    if not lease_data:
-        return None
-    
-    # Example query processing (this is a placeholder - actual implementation would depend on query structure)
-    if query == "rent_amount":
-        return lease_data.get("rent_amount")
-    elif query == "lease_term":
-        return lease_data.get("lease_term")
-    else:
-        return None
 
+# adds new lease data to db, returns lease_id. if new_lease=False, will just add overview and annotations to existing lease_id
+def query_lease(pathname, owner_id, raw_text):
+    # creates new lease, processes it, and returns response. saves file path to db
+    result = sb_connector.insert_data("leases", {"owner_id": owner_id, "pathname": pathname, "raw_text": raw_text})
+    if result and result.get("status") == "success":
+        lease_id = result["data"]["id"]
+        # Process the lease (e.g., run through AMD, generate overview, etc.)
+        # For now, we'll just return a placeholder response
+        return {"status": "success", "lease_id": lease_id}
+    else:
+        assert AssertionError("Failed to insert lease data into database")
+
+# pull pathname given lease_id
+def pull_pathname(lease_id):
+    result = sb_connector.pull_column("leases", columns="pathname", criteria={"id": lease_id})
+    if result and result.get("status") == "success" and result.get("data"):
+        return result["data"][0]["pathname"]
+    return None
+
+# pull report data given lease_id, returns overview, results, and annotations
 def query_response(response, lease_id=None, new_lease=False, new_lease_data=None):
     # response returns as a json string    
     # json string -> sql_like query
@@ -151,8 +164,157 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
     # assuming everything works
     return {"status": "success", "lease_id": lease_id}
 
+# adds translations, given a dict of annotation_id: translated_text. will update annotations table with translated text and set translated to true
+def add_translations(lease_id, translations, language_code): # lease_id: lease id, translations: dict[annotation_id: annotated id, translated_text: translated text], language_code: language code of translation (e.g., "es" for Spanish)
+    # translations is a list of dicts with keys: annotation_id, translated_text
+    new_translation = {} # {lease_id: lease_id, language_code: language_code, translations: translations dictstring}
+    ct=0
+    for translation in translations:
+        temp = {}
+        temp["annotation_id"] = translation["annotation_id"]
+        temp['translated_text'] = translation["translated_text"]
+        new_translation[ct] = temp
+        ct += 1
+    result = sb_connector.insert_data("translations", {"lease_id": lease_id, "language_code": language_code, "translation_content": json.dumps(new_translation)})
+    if(result["status"] == "error"):        raise Exception(f"Error inserting translations: {result['message']}")
 
+
+    return {"status": "success"}
+
+# pulls data from database, ready to fill into report template. returns error if lease_id is invalid or if any of the data is missing
+def pull_report_data(lease_id=None,owner_id=None):
+    assert lease_id or owner_id, "Must provide either lease_id or owner_id"
+    if owner_id:
+        result = sb_connector.pull_data("leases", query={"owner_id": owner_id})
+        if result and result.get("status") == "success" and result.get("data"):
+            lease_id = result["data"][0]["id"]
+        else:
+            return {"status": "error", "message": "No leases found for the given owner_id"}
+    else:
+        if(not check_lease(lease_id)):
+            return {"status": "error", "message": "Invalid lease_id"}
     
-
-
+    
+    overview_result = sb_connector.pull_data("ai_overviews", query={"lease_id": lease_id})
+    if overview_result and overview_result.get("status") == "success" and overview_result.get("data"):
+        overview_data = overview_result["data"][0]
+    else:
+        return {"status": "error", "message": "No overview found for the given lease_id"}
+    
+    results_result = sb_connector.pull_data("overview_results", query={"lease_id": lease_id})
+    if results_result and results_result.get("status") == "success" and results_result.get("data"):
+        results_data = results_result["data"]
+    else:        
+        return {"status": "error", "message": "No results found for the given lease_id"}
+    
+    annotations_result = sb_connector.pull_data("annotations", query={"lease_id": lease_id})
+    if annotations_result and annotations_result.get("status") == "success" and annotations_result.get("data"):
+        annotations_data = annotations_result["data"]
+    else:
+        return {"status": "error", "message": "No annotations found for the given lease_id"}
+    
+    """
+    result format:
+    {
+        {
+        "status": "success",
+        "overview": {
+            "ov_id": 6,
+            "created_at": "2026-03-01T04:29:23.81147+00:00",
+            "lease_id": 11,
+            "overview_content": "This 12-month urban residential lease provides a generally balanced risk profile with several tenant-friendly protections, though it includes a few moderate financial considerations. The monthly rent is aligned with comparable downtown units, and the security deposit is limited to one month’s rent, keeping upfront costs manageable. The fixed-term structure ensures rental price stability for the duration of the agreement, protecting the tenant from mid-term increases. Utilities such as water and internet are included, reducing variable monthly expenses and simplifying budgeting. The lease also contains a clearly defined maintenance response timeframe, which enhances accountability and tenant protection. However, the agreement includes a mandatory professional cleaning fee deducted from the security deposit upon move-out, which may reduce refund amounts regardless of property condition. There is also a subletting restriction requiring landlord approval, potentially limiting flexibility. While late fees are capped, they apply immediately after a short grace period. Overall, the lease offers good cost predictability and reasonable protections, but tenants should be comfortable with moderate flexibility limitations and defined move-out costs.",
+            "risk_val": 71,
+            "cost_mo": 2100,
+            "cost_dep": 2100,
+            "duration": 365,
+            "period": 60
+        },
+        "results": [
+            {
+            "id": 9,
+            "ov_id": 6,
+            "risk_flag": "g",
+            "risk_score": "L",
+            "risk_title": "Included Utilities",
+            "risk_contents": "Water and internet included in rent. Reduces monthly variability and improves budgeting predictability.",
+            "risk_origin": "Landlord shall provide water service and standard internet access at no additional charge to Tenant."
+            },
+            {
+            "id": 10,
+            "lease_id": 11,
+            "ov_id": 6,
+            "risk_flag": "b",
+            "risk_score": "M",
+            "risk_title": "Mandatory Cleaning Fee",
+            "lease_id": 11,
+            "risk_contents": "Non-negotiable professional cleaning fee deducted from deposit, reducing potential refund regardless of unit condition.",
+            "risk_origin": "A mandatory $250 professional cleaning fee shall be deducted from the security deposit upon Tenant’s move-out."
+            },
+            {
+            "id": 11,
+            "lease_id": 11,
+            "ov_id": 6,
+            "risk_flag": "m",
+            "risk_score": "M",
+            "risk_title": "Subletting Restrictions",
+            "risk_contents": "Requires written landlord approval for subleasing. Limits tenant flexibility in relocation scenarios.",
+            "risk_origin": "Tenant may not sublease the Premises without prior written consent from Landlord."
+            },
+            {
+            "id": 12,
+            "lease_id": 11,
+            "ov_id": 6,
+            "risk_flag": "m",
+            "risk_score": "L",
+            "risk_title": "Late Fee After Short Grace Period",
+            "risk_contents": "Late fee applied after 3-day grace period. Moderate financial impact if payment timing issues arise.",
+            "risk_origin": "If rent is not received within three (3) days of the due date, a late fee of 4% of monthly rent shall apply."
+            }
+        ],
+        "annotations": [
+            {
+            "annotation_id": 9,
+            "lease_id": 11,
+            "annotation_level": "g",
+            "annotation_desc": "Included utilities reduce monthly cost uncertainty and enhance overall lease value.",
+            "translated": false,
+            "translation_id": null,
+            "annotation_text": "Landlord shall provide water service and standard internet access at no additional charge to Tenant."
+            },
+            {
+            "annotation_id": 10,
+            "lease_id": 11,
+            "annotation_level": "b",
+            "annotation_desc": "Automatic deduction reduces deposit refund regardless of property condition.",
+            "translated": false,
+            "translation_id": null,
+            "annotation_text": "A mandatory $250 professional cleaning fee shall be deducted from the security deposit upon Tenant’s move-out."
+            },
+            {
+            "annotation_id": 11,
+            "lease_id": 11,
+            "annotation_level": "m",
+            "annotation_desc": "Limits flexibility; approval requirement may complicate relocation or temporary absence.",
+            "translated": false,
+            "translation_id": null,
+            "annotation_text": "Tenant may not sublease the Premises without prior written consent from Landlord."
+            },
+            {
+            "annotation_id": 12,
+            "lease_id": 11,
+            "annotation_level": "m",
+            "annotation_desc": "Short grace period increases risk of incurring penalties from minor delays.",
+            "translated": false,
+            "translation_id": null,
+            "annotation_text": "If rent is not received within three (3) days of the due date, a late fee of 4% of monthly rent shall apply."
+            }
+        ]
+    }
+    """
+    return { # if success
+        "status": "success",
+        "results": results_data,
+        "overview": overview_data,
+        "annotations": annotations_data
+    }
 

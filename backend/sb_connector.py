@@ -74,4 +74,15 @@ class SBConnector:
             print(f"Error updating data in Supabase: {e}")
             return {"status": "error", "message": str(e)}
     
-    
+    # check if value exists
+    def value_exists(self, table_name, column_name, value):
+        if not self.client:
+            print("Supabase client not initialized.")
+            return {"status": "error", "message": "Supabase client not initialized."}
+        try:
+            response = self.client.table(table_name).select(column_name).eq(column_name, value).execute()
+            exists = len(response.data) > 0
+            return {"status": "success", "exists": exists}
+        except Exception as e:
+            print(f"Error checking value existence in Supabase: {e}")
+            return {"status": "error", "message": str(e)}
