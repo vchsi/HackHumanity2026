@@ -143,8 +143,8 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
             const { voiceId, voiceName } = getVoiceConfig(lang);
             const API_KEY = (import.meta.env.VITE_ELEVENLABS_API_KEY || "").trim();
 
-            console.log("🔑 API Key:", API_KEY ? `${API_KEY.substring(0, 6)}...` : "❌ MISSING");
-            console.log(`🎤 Voice: ${voiceName} (${voiceId})`);
+            console.log("API Key:", API_KEY ? `${API_KEY.substring(0, 6)}...` : "MISSING");
+            console.log(`Voice: ${voiceName} (${voiceId})`);
 
             if (!API_KEY) {
                 throw new Error("VITE_ELEVENLABS_API_KEY is not set in .env.");
@@ -196,16 +196,16 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
             // Play it
             try {
                 await audio.play();
-                console.log("✅ audio.play() succeeded!");
+                console.log("audio.play() succeeded!");
                 setAutoplayBlocked(false);
             } catch (playErr) {
-                console.warn("⚠️ Autoplay blocked by browser. Showing manual play button.", playErr);
+                console.warn("Autoplay blocked by browser. Showing manual play button.", playErr);
                 setAutoplayBlocked(true);
                 setIsSpeaking(false);
             }
 
         } catch (err: any) {
-            console.error("🚨 TTS Error:", err);
+            console.error("TTS Error:", err);
             alert(`ElevenLabs failed: ${err.message || err}\n\nFalling back to browser speech.`);
             setIsSpeaking(false);
 
@@ -352,7 +352,7 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
                                         controls
                                         onPlay={() => { setIsSpeaking(true); setAutoplayBlocked(false); }}
                                         onEnded={() => { setIsSpeaking(false); }}
-                                        onError={(e) => console.error("❌ Audio error:", e)}
+                                        onError={(e) => console.error("Audio error:", e)}
                                         style={{ width: '100%', height: '40px' }}
                                     />
                                 </div>
