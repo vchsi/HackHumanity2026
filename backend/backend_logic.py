@@ -47,9 +47,9 @@ def pull_lease_data(lease_id, tables=["leases"]):
 
 
 # adds new lease data to db, returns lease_id. if new_lease=False, will just add overview and annotations to existing lease_id
-def query_lease(pathname, owner_id, raw_text):
+def query_lease(pathname, owner_email, raw_text): # owner_id is email for now, can change later
     # creates new lease, processes it, and returns response. saves file path to db
-    result = sb_connector.insert_data("leases", {"owner_id": owner_id, "pathname": pathname, "raw_text": raw_text})
+    result = sb_connector.insert_data("leases", {"owner_id": owner_email, "pathname": pathname, "raw_text": raw_text})
     if result and result.get("status") == "success":
         lease_id = result["data"]["id"]
         # Process the lease (e.g., run through AMD, generate overview, etc.)
@@ -80,7 +80,6 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
     output data:
     {
         "title": "TITLE OF LEASE / ADDRESS / USER",
-        "user_id": "[do not fill this in, provided in response]",
         "basic_info": {
             "address": "ADDRESS OF PROPERTY"
         },
@@ -105,8 +104,16 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
             {"annotation_text": "EXACT TEXT FROM THE LEASE AGREEMENT",
             "annotation_level": "b(bad)|m(medium)|g(good) - RISK LEVEL OF THE ANNOTATION",
             "annotation_desc": "CONCISE DESCRIPTION OF THE ANNOTATION, JUSTIFICATION OF LEVEL+IMPACT"}
+        ],
+        "questions": [
+            {
+            "question_priority": "h(high), m(medium), l(low) - PRIORITY LEVEL OF THE QUESTION, DETERMINED BY IMPACT AND URGENCY",
+            "question_title": "A QUESTION THE RENTER SHOULD ASK THE LANDLORD/LEASE OFFERER, BASED ON THE ANNOTATIONS AND OVERVIEW",
+            "question_explaination": "A BRIEF EXPLANATION OF WHY THIS QUESTION IS IMPORTANT AND WHAT THE RENTER SHOULD KNOW IN ORDER TO ASK THIS QUESTION"
+            }
         ]
     }
+    important. DO NOT PUT ANY CONTROL CHARACTERS IN THE STRINGS (e.g., \n, \t, etc.) AND MAKE SURE TO ESCAPE ANY QUOTES PROPERLY. THIS CAN CAUSE ISSUES WITH SQL QUERIES AND JSON PARSING.
     """
     response = json.loads(response)
     # part 1: lease information (ai_overviews)
@@ -138,12 +145,12 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
     if operation_result["status"] == "error":
         raise Exception(f"Error inserting lease info: {operation_result['message']}")
 
-    pull_result = sb_connector.pull_column("ai_overviews", columns="ov_id", criteria={"lease_id": lease_id})
+    pull_result = sb_connector.pull_column("ai_overviews", columns="id", criteria={"lease_id": lease_id})
     if pull_result["status"] == "error":
         raise Exception(f"Error retrieving overview_id: {pull_result['message']}")
     if not pull_result.get("data"):
         raise Exception("No overview found with the given lease_id")
-    overview_id = pull_result["data"][0]["ov_id"]
+    overview_id = pull_result["data"][0]["id"]
     # part 2: clause results (ai_annotations)
     # will loop through each annotation and insert into ai_annotations, with foreign key to leases
     for result in response["results"]:
@@ -161,25 +168,40 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
         if operation_result["status"] == "error":
             raise Exception(f"Error inserting annotation: {operation_result['message']}")
     
+    # part 4: questions
+    for question in response["questions"]:
+        question["lease_id"] = lease_id
+        operation_result = sb_connector.insert_data("questions", question)
+        if operation_result["status"] == "error":
+            raise Exception(f"Error inserting question: {operation_result['message']}")
+        
     # assuming everything works
     return {"status": "success", "lease_id": lease_id}
 
 # adds translations, given a dict of annotation_id: translated_text. will update annotations table with translated text and set translated to true
-def add_translations(lease_id, translations, language_code): # lease_id: lease id, translations: dict[annotation_id: annotated id, translated_text: translated text], language_code: language code of translation (e.g., "es" for Spanish)
-    # translations is a list of dicts with keys: annotation_id, translated_text
-    new_translation = {} # {lease_id: lease_id, language_code: language_code, translations: translations dictstring}
-    ct=0
+def add_translations(lease_id, translations, language_code): 
+    # lease_id: lease id, translations: list(tuple(content_type="o(overview)/q(question)/a(annotation)/r(result)",obj_id=int,translated_data=string("translatedpart1|translatedpart2") seperated with bar (|))), language_code: language code of translation (e.g., "es" for Spanish)
+    # to do: add translation, set translated to true, add language code to annotation, insert into translations table with annotation_id, translated_content, and language_code
+    object_tables = {
+        "q": "questions",
+        "a": "annotations",
+        "o": "ai_overviews",
+        "r": "overview_results"
+    }
     for translation in translations:
-        temp = {}
-        temp["annotation_id"] = translation["annotation_id"]
-        temp['translated_text'] = translation["translated_text"]
-        new_translation[ct] = temp
-        ct += 1
-    result = sb_connector.insert_data("translations", {"lease_id": lease_id, "language_code": language_code, "translation_content": json.dumps(new_translation)})
-    if(result["status"] == "error"):        raise Exception(f"Error inserting translations: {result['message']}")
+        content_type, obj_id, translated_data = translation
+        table_name = object_tables.get(content_type)
+        first_result = sb_connector.update_data(table_name, query={"id": obj_id}, new_data={"translated": True})
+        if first_result["status"] == "error":
+            raise Exception(f"Error updating translation status: {first_result['message']}")
+        second_result = sb_connector.insert_data("translations", {"lease_id": lease_id, "obj_type": content_type, "obj_id": obj_id, "translation_content": translated_data, "language_code": language_code})
+        if second_result["status"] == "error":
+            raise Exception(f"Error inserting translation: {second_result['message']}")
+        
+    return {"status": "success", "translations_added": len(translations)}
 
 
-    return {"status": "success"}
+
 
 # pulls data from database, ready to fill into report template. returns error if lease_id is invalid or if any of the data is missing
 def pull_report_data(lease_id=None,owner_id=None):
@@ -213,6 +235,12 @@ def pull_report_data(lease_id=None,owner_id=None):
     else:
         return {"status": "error", "message": "No annotations found for the given lease_id"}
     
+    questions_result = sb_connector.pull_data("questions", query={"lease_id": lease_id})
+    if questions_result and questions_result.get("status") == "success" and questions_result.get("data"):
+        questions_data = questions_result["data"]
+    else:
+        return {"status": "error", "message": "No questions found for the given lease_id"}
+
     """
     result format:
     {
@@ -315,6 +343,82 @@ def pull_report_data(lease_id=None,owner_id=None):
         "status": "success",
         "results": results_data,
         "overview": overview_data,
-        "annotations": annotations_data
+        "annotations": annotations_data,
+        "questions": questions_data
     }
 
+# gets translated content given lease_id and language code. returns error if lease_id is invalid or if no translations found
+def get_translated_report_data(lease_id, language_code):
+    # returns translated content for overview, results, and annotations based on lease_id and language_code. if no translations found for a specific field, will return original content for that field
+    # Get base report data
+    report_data = pull_report_data(lease_id=lease_id)
+    if report_data.get("status") == "error":
+        return report_data
+    
+    # Fetch all translations for this lease and language
+    translations_result = sb_connector.pull_data("translations", query={"lease_id": lease_id, "language_code": language_code})
+    if translations_result.get("status") == "error":
+        return {"status": "error", "message": f"Error fetching translations: {translations_result['message']}"}
+    
+    if not translations_result.get("data"):
+        return {"status": "error", "message": f"No translations found for language: {language_code}"}
+    
+    # Create a map of obj_type + obj_id -> translated_content for quick lookup
+    translation_map = {}
+    for trans in translations_result["data"]:
+        key = (trans["obj_type"], trans["obj_id"])
+        translation_map[key] = trans["translation_content"]
+    
+    # Define which fields correspond to each object type (in pipe order)
+    object_fields = {
+        "o": ["overview_content"],
+        "r": ["risk_title", "risk_contents"],
+        "q": ["question_title", "question_explaination"],
+        "a": ["annotation_text", "annotation_desc"]
+    }
+    
+    # Replace overview fields
+    if report_data.get("overview"):
+        overview = report_data["overview"]
+        overview_id = overview.get("id")
+        if overview_id and ("o", overview_id) in translation_map:
+            translated_parts = translation_map[("o", overview_id)].split("|")
+            fields = object_fields.get("o", [])
+            for idx, field in enumerate(fields):
+                if idx < len(translated_parts):
+                    overview[field] = translated_parts[idx]
+    
+    # Replace results fields
+    if report_data.get("results"):
+        for result in report_data["results"]:
+            result_id = result.get("id")
+            if result_id and ("r", result_id) in translation_map:
+                translated_parts = translation_map[("r", result_id)].split("|")
+                fields = object_fields.get("r", [])
+                for idx, field in enumerate(fields):
+                    if idx < len(translated_parts):
+                        result[field] = translated_parts[idx]
+    
+    # Replace annotations fields
+    if report_data.get("annotations"):
+        for annotation in report_data["annotations"]:
+            annotation_id = annotation.get("id")
+            if annotation_id and ("a", annotation_id) in translation_map:
+                translated_parts = translation_map[("a", annotation_id)].split("|")
+                fields = object_fields.get("a", [])
+                for idx, field in enumerate(fields):
+                    if idx < len(translated_parts):
+                        annotation[field] = translated_parts[idx]
+    
+    # Replace questions fields
+    if report_data.get("questions"):
+        for question in report_data["questions"]:
+            question_id = question.get("id")
+            if question_id and ("q", question_id) in translation_map:
+                translated_parts = translation_map[("q", question_id)].split("|")
+                fields = object_fields.get("q", [])
+                for idx, field in enumerate(fields):
+                    if idx < len(translated_parts):
+                        question[field] = translated_parts[idx]
+    
+    return report_data
