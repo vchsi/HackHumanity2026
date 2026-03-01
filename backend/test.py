@@ -108,4 +108,4 @@ new_lease_data = {
     ("q", 4, "¿Puede reducirse o eliminarse el cargo por terminación anticipada si se encuentra un inquilino de reemplazo?|Comprender si el arrendador permite mitigar el costo mediante un reemplazo puede reducir significativamente el riesgo financiero en caso de reubicación"),
     ("q", 5, "¿La cuota administrativa por mudanza es negociable o depende del estado de la unidad?|Aclarar si la cuota se aplica independientemente de las condiciones ayuda a estimar cuánto del depósito será recuperado"),
     ("q", 6, "¿Qué criterios se utilizan para aprobar una solicitud de subarrendamiento?|Conocer los estándares de aprobación reduce la incertidumbre y permite evaluar la flexibilidad real del contrato")], "es"))"""
-#print(get_translated_report_data(18, "es"))
+print(get_translated_report_data(18, "es"))
