@@ -7,8 +7,13 @@ from pathlib import Path
 
 class SBConnector:
     def __init__(self):
+        # Look for .env in the backend directory first, then project root
+        backend_env = Path(__file__).resolve().parent / ".env"
         project_env = Path(__file__).resolve().parent.parent / ".env"
-        load_dotenv(dotenv_path=project_env, override=True)
+        if backend_env.exists():
+            load_dotenv(dotenv_path=backend_env, override=True)
+        else:
+            load_dotenv(dotenv_path=project_env, override=True)
         try:
             self.url = (os.getenv("SUPABASE_URL") or "").strip().strip('"').strip("'").rstrip("/")
             self.key = os.getenv("SUPABASE_KEY")

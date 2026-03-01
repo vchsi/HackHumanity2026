@@ -4,11 +4,14 @@ import os
 import io
 import traceback
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 from dotenv import load_dotenv
-from backend_logic import query_response, query_lease
+from backend_logic import query_response, query_lease, pull_report_data
+from sb_connector import SBConnector
+
+sb = SBConnector()
 
 # Ensure the backend directory is in the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -36,7 +39,7 @@ def read_root():
     return {"message": "LeaseLens AI Analysis Backend Running"}
 
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
+async def analyze(file: UploadFile = File(...), owner_email: str = Form("user@example.com")):
     print(f"Received file: {file.filename}")
     if not file.filename.endswith(('.pdf', '.doc', '.docx', '.txt')):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload PDF, Word, or Text.")
@@ -55,9 +58,11 @@ async def analyze(file: UploadFile = File(...)):
         else:
             raw_text = contents.decode('utf-8', errors='ignore')
         try:
-            result = query_lease(file.filename, raw_text=raw_text)  # Store raw text in DB for reference
+            result = query_lease(file.filename, raw_text=raw_text, owner_email=owner_email)  # Store raw text in DB for reference
         except Exception as e:
             raise Exception(f"Database Error: {str(e)}")
+        if not result:
+            raise Exception("Database Error: Failed to create lease record (Supabase client may not be initialized)")
         lease_id = result.get("lease_id")
         print(f"new lease created @ Lease ID: {lease_id}")
     except Exception as e:
@@ -80,6 +85,53 @@ async def analyze(file: UploadFile = File(...)):
     except Exception as e:
         print(f"Service Error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/history")
+async def get_history(email: str = Query(...)):
+    """Fetch all leases + overviews for a given user email."""
+    try:
+        # Get leases for this user
+        leases_result = sb.pull_data("leases", query={"owner_id": email})
+        if not leases_result or leases_result.get("status") != "success":
+            return {"leases": []}
+
+        leases = leases_result.get("data", [])
+        if not leases:
+            return {"leases": []}
+
+        # Get overviews for all lease IDs
+        lease_ids = [l["id"] for l in leases]
+        overviews_map = {}
+        for lid in lease_ids:
+            ov = sb.pull_data("ai_overviews", query={"lease_id": lid})
+            if ov and ov.get("status") == "success" and ov.get("data"):
+                overviews_map[lid] = ov["data"][0]
+
+        # Combine
+        result = []
+        for lease in leases:
+            overview = overviews_map.get(lease["id"])
+            result.append({
+                "id": lease["id"],
+                "pathname": lease.get("pathname", ""),
+                "created_at": lease.get("created_at", ""),
+                "owner_id": lease.get("owner_id", ""),
+                "overview": {
+                    "risk_score": overview.get("risk_score", 0),
+                    "overview_contents": overview.get("overview_contents", ""),
+                    "rent_monthly": overview.get("rent_monthly"),
+                } if overview else None
+            })
+
+        # Sort by created_at descending
+        result.sort(key=lambda x: x["created_at"], reverse=True)
+        return {"leases": result}
+
+    except Exception as e:
+        print(f"History Error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")

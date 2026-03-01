@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { User, LogOut, Clock, Settings } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthContext'
@@ -6,6 +6,7 @@ import appIcon from '../assets/appIcon.svg.png'
 
 export default function Header() {
     const { isLoggedIn, logout } = useAuth()
+    const navigate = useNavigate()
     const [showMenu, setShowMenu] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
@@ -46,7 +47,7 @@ export default function Header() {
                                 <div className="px-4 py-3 border-b-[3px] border-[#5A4231] bg-[#F2E3D5] pointer-events-none">
                                     <p className="font-bold text-[#4A3424] text-sm truncate">My Account</p>
                                 </div>
-                                <button className="flex items-center gap-3 px-4 py-3 hover:bg-[#F2E3D5] text-[#8A6B53] hover:text-[#D9734E] font-bold text-[15px] transition-colors border-b-[2px] border-[#5A4231]/10 text-left">
+                                <button onClick={() => { navigate('/history'); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-[#F2E3D5] text-[#8A6B53] hover:text-[#D9734E] font-bold text-[15px] transition-colors border-b-[2px] border-[#5A4231]/10 text-left w-full">
                                     <Clock size={18} strokeWidth={2.5} /> History
                                 </button>
                                 <button className="flex items-center gap-3 px-4 py-3 hover:bg-[#F2E3D5] text-[#8A6B53] hover:text-[#D9734E] font-bold text-[15px] transition-colors border-b-[2px] border-[#5A4231]/10 text-left">
