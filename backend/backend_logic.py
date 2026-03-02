@@ -241,6 +241,7 @@ def query_response(response, lease_id=None, new_lease=False, new_lease_data=None
     return {"status": "success", "lease_id": lease_id}
 
 # depreciationed, may bring back later if we want to have a separate endpoint for adding translations instead of doing it in app.py
+"""
 # adds translations, given a dict of annotation_id: translated_text. will update annotations table with translated text and set translated to true
 def add_translations(lease_id, translations, language_code): 
     # lease_id: lease id, translations: list(tuple(content_type="o(overview)/q(question)/a(annotation)/r(result)",obj_id=int,translated_data=string("translatedpart1|translatedpart2") seperated with bar (|))), language_code: language code of translation (e.g., "es" for Spanish)
@@ -259,7 +260,7 @@ def add_translations(lease_id, translations, language_code):
     return {"status": "success", "translations_added": len(translations)}
 
 
-
+"""
 
 # pulls data from database, ready to fill into report template. returns error if lease_id is invalid or if any of the data is missing
 def pull_report_data(lease_id=None,owner_id=None):

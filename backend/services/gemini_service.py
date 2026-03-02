@@ -43,6 +43,7 @@ INPUT
 SPEED MODE (IMPORTANT)
 - Do NOT summarize the entire lease.
 - Only analyze the MOST IMPORTANT 6–10 clauses that typically create financial risk or major obligations:
+- For Highlights/Annotations, generate between 7-15 annotations focused on the most critical lease terms, especially those that could lead to financial risk or major obligations for the tenant. Prioritize clarity and relevance in your annotations, ensuring they directly address key points in the lease that tenants should be aware of.
   1) Rent amount & due date
   2) Security deposit & deductions
   3) Fees (late, cleaning, admin, utilities)
@@ -152,7 +153,7 @@ STYLE
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
                     data = json.loads(json_match.group(0))
-                    
+                    print("data: ", data)
                     # Double-check that full_text is present for the highlighter
                     if "full_text" not in data or len(data["full_text"]) < 100:
                         data["full_text"] = raw_text

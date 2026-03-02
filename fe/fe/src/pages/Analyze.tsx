@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import DocumentViewer from '../components/DocumentViewer';
 import SidePanel from '../components/SidePanel';
 import { segmentDocument } from '../utils/documentProcessor';
+import { fuzzyIndexOf } from '../utils/fuzzyMatch';
 import { useAuth } from '../components/AuthContext';
 import type { Highlight, DocumentSegment, AnalysisResult } from '../types';
 
@@ -149,8 +150,9 @@ export default function Analyze() {
 
             const highlights: Highlight[] = rawResults.map((h: any, idx: number) => {
                 const quote = h.annotationText || "";
-                const startIndex = rawFullText.indexOf(quote);
-                const endIndex = startIndex !== -1 ? startIndex + quote.length : -1;
+                const match = fuzzyIndexOf(rawFullText, quote);
+                const startIndex = match ? match.start : -1;
+                const endIndex = match ? match.end : -1;
 
                 let level: 'red' | 'green' | 'yellow' = 'yellow';
                 if (h.annotationLevel === 'good') level = 'green';

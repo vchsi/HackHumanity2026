@@ -1,15 +1,16 @@
 import type { DocumentSegment, Highlight } from '../types';
+import { fuzzyIndexOf } from './fuzzyMatch';
 
 export function segmentDocument(fullText: string, highlights: Highlight[]): DocumentSegment[] {
     if (!highlights.length) {
         return [{ text: fullText }];
     }
 
-    // Sort highlights by where their quote appears in the full text
+    // Sort highlights by where their quote appears in the full text (fuzzy match)
     const sortedHighlights = [...highlights]
         .map(h => {
-            const index = fullText.indexOf(h.quote);
-            return { ...h, index };
+            const match = fuzzyIndexOf(fullText, h.quote);
+            return { ...h, index: match ? match.start : -1, matchEnd: match ? match.end : -1 };
         })
         .filter(h => h.index !== -1)
         .sort((a, b) => a.index - b.index);
@@ -25,13 +26,14 @@ export function segmentDocument(fullText: string, highlights: Highlight[]): Docu
             });
         }
 
-        // Add highlight segment
+        // Add highlight segment (use fuzzy match end for correct span)
+        const end = highlight.matchEnd ?? (highlight.index + highlight.quote.length);
         segments.push({
-            text: fullText.substring(highlight.index, highlight.index + highlight.quote.length),
+            text: fullText.substring(highlight.index, end),
             highlightId: highlight.id
         });
 
-        lastIndex = highlight.index + highlight.quote.length;
+        lastIndex = end;
     }
 
     // Add remaining text
