@@ -1,7 +1,7 @@
 import os
 import json
 import re
-import time
+import asyncio
 import traceback
 from pathlib import Path
 import google.generativeai as genai
@@ -142,11 +142,11 @@ STYLE
 - evidence_location_hint: use any available section header, clause title, or nearby keyword to help UI highlighting.
 """
 
-        max_retries = 3
+        max_retries = 2
         for attempt in range(max_retries):
             try:
                 #print(f"Calling Gemini ({self.model_name}) for analysis... (attempt {attempt + 1}/{max_retries})")
-                response = self.model.generate_content(prompt)
+                response = await self.model.generate_content_async(prompt)
                 response_text = response.text
                 
                 # Robust JSON extraction from AI markdown block
@@ -165,10 +165,10 @@ STYLE
                     raise Exception("AI response was not in the expected JSON format.")
                     
             except ResourceExhausted as e:
-                wait_time = 35 * (attempt + 1)  # 35s, 70s, 105s
+                wait_time = 10 * (attempt + 1)  # 10s, 20s — stay well within Heroku's 30s limit
                 print(f"Gemini rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s before retry...")
                 if attempt < max_retries - 1:
-                    time.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                 else:
                     print(f"All {max_retries} retries exhausted. Rate limit still active.")
                     raise Exception(
