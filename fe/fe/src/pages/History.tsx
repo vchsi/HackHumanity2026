@@ -32,7 +32,7 @@ export default function History() {
             }
 
             try {
-                const res = await fetch(`http://localhost:8000/history?email=${encodeURIComponent(session.user.email)}`);
+                const res = await fetch(`/history?email=${encodeURIComponent(session.user.email)}`);
                 if (!res.ok) throw new Error('Failed to fetch history');
                 const data = await res.json();
                 setLeases(data.leases || []);

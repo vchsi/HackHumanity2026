@@ -133,7 +133,7 @@ export default function Analyze() {
                 formData.append('owner_email', session.user.email);
             }
 
-            const response = await fetch('http://localhost:8000/analyze', {
+            const response = await fetch('/analyze', {
                 method: 'POST',
                 body: formData
             });

@@ -1,0 +1,10 @@
+{
+  "name": "leasify",
+  "private": true,
+  "scripts": {
+    "heroku-postbuild": "cd fe/fe && npm install && npm run build"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

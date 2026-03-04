@@ -4,8 +4,11 @@ import os
 import io
 import traceback
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException
+from pathlib import Path
+from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import pdfplumber
 from dotenv import load_dotenv
 from backend_logic import query_response, query_lease, pull_report_data
@@ -27,7 +30,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # Vite default
-        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5173", # for testing purposes
+        "https://leasify-0abe211b7a7d.herokuapp.com", # production heroku
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,6 +41,7 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "LeaseLens AI Analysis Backend Running"}
+
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...), owner_email: str = Form("user@example.com")):
@@ -144,6 +149,19 @@ async def get_report(lease_id: int):
     except Exception as e:
         print(f"Report Error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Serve Frontend Static Files ---
+static_dir = Path(__file__).parent / "static"
+if static_dir.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """Catch-all: serve index.html for any non-API route (SPA support)."""
+        file_path = static_dir / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(static_dir / "index.html"))
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
