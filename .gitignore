@@ -3,3 +3,4 @@ backend/bin
 backend/include
 backend/lib
 backend/__pycache__
+node_modules
