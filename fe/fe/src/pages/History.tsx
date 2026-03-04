@@ -51,8 +51,8 @@ export default function History() {
     );
 
     const getRiskColor = (score: number) => {
-        if (score <= 35) return { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', label: 'Low Risk' };
-        if (score <= 65) return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', label: 'Medium Risk' };
+        if (score >= 75) return { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', label: 'Low Risk' };
+        if (score >= 45) return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', label: 'Medium Risk' };
         return { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-300', label: 'High Risk' };
     };
 
