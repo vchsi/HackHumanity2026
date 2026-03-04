@@ -24,7 +24,7 @@ class GeminiService:
         
         # User specifically asked for Gemini 2.5 Flash
         # We verified the model name via gensai.list_models()
-        self.model_name = "models/gemini-2.5-flash" 
+        self.model_name = "models/gemini-3-flash-preview" 
         self.model = genai.GenerativeModel(self.model_name,
                                            generation_config={
                                                "temperature": 0.2,
