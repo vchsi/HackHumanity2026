@@ -9,4 +9,11 @@ export default defineConfig({
     outDir: '../../backend/static',
     emptyOutDir: true,
   },
+  server: {
+    proxy: {
+      '/analyze': 'http://localhost:8000',
+      '/history': 'http://localhost:8000',
+      '/report': 'http://localhost:8000',
+    },
+  },
 })

@@ -38,10 +38,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "LeaseLens AI Analysis Backend Running"}
-
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...), owner_email: str = Form("user@example.com")):
