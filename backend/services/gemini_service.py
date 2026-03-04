@@ -25,7 +25,12 @@ class GeminiService:
         # User specifically asked for Gemini 2.5 Flash
         # We verified the model name via gensai.list_models()
         self.model_name = "models/gemini-2.5-flash" 
-        self.model = genai.GenerativeModel(self.model_name)
+        self.model = genai.GenerativeModel(self.model_name,
+                                           generation_config={
+                                               "temperature": 0.2,
+                                               "response_mime_type": "application/json"
+                                               }
+                                               )
 
     async def analyze_lease(self, filename: str, raw_text: str):
         # 2-minute overview summary prompt with strict JSON structure
@@ -146,7 +151,8 @@ STYLE
         for attempt in range(max_retries):
             try:
                 #print(f"Calling Gemini ({self.model_name}) for analysis... (attempt {attempt + 1}/{max_retries})")
-                response = await self.model.generate_content_async(prompt)
+                # Run synchronous Gemini call in a thread pool to avoid blocking the event loop
+                response = await asyncio.to_thread(self.model.generate_content, prompt)
                 response_text = response.text
                 
                 # Robust JSON extraction from AI markdown block
