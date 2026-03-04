@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Highlight, AnalysisResult, EvidenceField } from '../types';
 import { AlertCircle } from 'lucide-react';
 import RiskBadge from './RiskBadge';
@@ -141,42 +140,22 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
 
         try {
             const { voiceId, voiceName } = getVoiceConfig(lang);
-            const API_KEY = (import.meta.env.VITE_ELEVENLABS_API_KEY || "").trim();
-
-            console.log("API Key:", API_KEY ? `${API_KEY.substring(0, 6)}...` : "MISSING");
             console.log(`Voice: ${voiceName} (${voiceId})`);
 
-            if (!API_KEY) {
-                throw new Error("VITE_ELEVENLABS_API_KEY is not set in .env.");
-            }
-
-            console.log("📡 Requesting ElevenLabs TTS...");
-            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+            console.log("📡 Requesting TTS via backend...");
+            const response = await fetch('/tts', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'xi-api-key': API_KEY,
-                    'Accept': 'audio/mpeg'
-                },
-                body: JSON.stringify({
-                    text: text,
-                    model_id: "eleven_multilingual_v2",
-                    voice_settings: {
-                        stability: 0.6,
-                        similarity_boost: 0.8,
-                        style: 0.4,
-                        use_speaker_boost: true
-                    }
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, voice_id: voiceId })
             });
 
-            console.log("📥 ElevenLabs Status:", response.status);
+            console.log("📥 TTS Status:", response.status);
 
             if (!response.ok) {
                 const errorBody = await response.text();
                 let detail = "";
-                try { detail = JSON.parse(errorBody)?.detail?.message || errorBody; } catch { detail = errorBody; }
-                throw new Error(`ElevenLabs ${response.status}: ${detail}`);
+                try { detail = JSON.parse(errorBody)?.detail || errorBody; } catch { detail = errorBody; }
+                throw new Error(`TTS ${response.status}: ${detail}`);
             }
 
             const blob = await response.blob();
@@ -221,15 +200,18 @@ export default function SidePanel({ analysis, selectedHighlight, onSelectTab, ac
         setIsTranslating(true);
         setShowLangMenu(false);
         try {
-            console.log("Translation via Gemini started...");
-            const translationKey = import.meta.env.VITE_TRANSLATION_API_KEY;
-            const genAI = new GoogleGenerativeAI(translationKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            const prompt = `Translate the following lease expert review bullet points into ${lang}. Keep the same list format. Return ONLY the translated text: ${analysis.overview_text}`;
-
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            console.log("Translation via backend started...");
+            const response = await fetch('/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: analysis.overview_text, language: lang })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Translation failed');
+            }
+            const data = await response.json();
+            const text = data.translated_text;
 
             console.log("Translation received:", text.substring(0, 50) + "...");
             setTranslatedText(text);

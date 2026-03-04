@@ -145,15 +145,16 @@ STYLE
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                print(f"Calling Gemini ({self.model_name}) for analysis... (attempt {attempt + 1}/{max_retries})")
+                #print(f"Calling Gemini ({self.model_name}) for analysis... (attempt {attempt + 1}/{max_retries})")
                 response = self.model.generate_content(prompt)
                 response_text = response.text
                 
                 # Robust JSON extraction from AI markdown block
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
+                    #print("Raw Gemini response: ", response_text)
                     data = json.loads(json_match.group(0))
-                    print("data: ", data)
+                    #print("data: ", data)
                     # Double-check that full_text is present for the highlighter
                     if "full_text" not in data or len(data["full_text"]) < 100:
                         data["full_text"] = raw_text
