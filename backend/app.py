@@ -37,7 +37,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get("/")
+@app.post("/")
 async def root():
     return {"message": "lapi"}
 
